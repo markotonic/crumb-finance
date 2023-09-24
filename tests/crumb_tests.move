@@ -1,10 +1,11 @@
 #[test_only]
 module crumb::tests {
+    use std::option;
     use sui::test_scenario::{Self, Scenario};
     use sui::tx_context::{Self};
     use sui::balance::{Self, Balance};
     use sui::transfer;
-    use sui::coin::{Self, Coin};
+    use sui::coin::{Self, Coin, CoinMetadata};
     use sui::sui::SUI;
     use crumb::dca::{
         Self, Admin, Asset, Oracle, 
@@ -12,13 +13,14 @@ module crumb::tests {
         init_for_testing, update_price, 
         create_position, execute_trade
     };
+    use crumb::usd::{USD, test_init};
 
     const ADMIN: address = @0xABBA;
     const USER: address = @0xB0B;
     const KEEPER: address = @0xC0C;
 
     // OTWs for currencies used in tests
-    struct USD has drop {}
+    // struct USD has drop {}
     
     const USD_DECIMALS: u64 = 6;
     const ONE_USD: u64 = 1_000_000;
@@ -39,18 +41,27 @@ module crumb::tests {
             init_for_testing(ctx);
         };
         test_scenario::next_tx(&mut scenario, sender);
+        {
+            let ctx = test_scenario::ctx(&mut scenario);
+            test_init(ctx);
+        };
+        test_scenario::next_tx(&mut scenario, sender);
         scenario
     }
 
     fun setup_assets_test(scenario: &mut test_scenario::Scenario) {
         let global = test_scenario::take_shared<Global>(scenario);
         let admin = test_scenario::take_from_address<Admin>(scenario, ADMIN);
+        let usd_meta = test_scenario::take_shared<CoinMetadata<USD>>(scenario);
         let ctx = test_scenario::ctx(scenario);
+        // let sui_meta = test_scenario::take_shared<CoinMetadata<SUI>>(scenario);
 
-        add_asset<SUI>(&admin, std::string::utf8(b"sui"), &mut global, ctx);
-        add_asset<USD>(&admin, std::string::utf8(b"usd"), &mut global, ctx);
+        // add_asset<SUI>(&admin, &sui_meta, &mut global, ctx);
+        add_asset<USD>(&admin, &usd_meta, &mut global, ctx);
 
         test_scenario::return_shared(global);
+        // test_scenario::return_shared(sui_meta);
+        test_scenario::return_shared(usd_meta);
         test_scenario::return_to_address(ADMIN, admin);
     }
 
@@ -77,11 +88,13 @@ module crumb::tests {
         {
             let global = test_scenario::take_shared<Global>(scenario);
             let admin = test_scenario::take_from_address<Admin>(scenario, ADMIN);
+            let sui_meta = test_scenario::take_shared<CoinMetadata<SUI>>(scenario);
             let ctx = test_scenario::ctx(scenario);
 
-            add_asset<SUI>(&admin, std::string::utf8(b"sui"), &mut global, ctx);
+            add_asset<SUI>(&admin, &sui_meta, &mut global, ctx);
 
             test_scenario::return_shared(global);
+            test_scenario::return_shared(sui_meta);
             test_scenario::return_to_address(ADMIN, admin);
         };
         
@@ -101,12 +114,14 @@ module crumb::tests {
         {
             let global = test_scenario::take_shared<Global>(scenario);
             let admin = test_scenario::take_from_address<Admin>(scenario, ADMIN);
+            let sui_meta = test_scenario::take_shared<CoinMetadata<SUI>>(scenario);
             let ctx = test_scenario::ctx(scenario);
 
-            add_asset<SUI>(&admin, std::string::utf8(b"sui"), &mut global, ctx);
-            add_asset<SUI>(&admin, std::string::utf8(b"sui"), &mut global, ctx);
+            add_asset<SUI>(&admin, &sui_meta, &mut global, ctx);
+            add_asset<SUI>(&admin, &sui_meta, &mut global, ctx);
 
             test_scenario::return_shared(global);
+            test_scenario::return_shared(sui_meta);
             test_scenario::return_to_address(ADMIN, admin);
         };
 
@@ -120,11 +135,13 @@ module crumb::tests {
         {
             let global = test_scenario::take_shared<Global>(scenario);
             let admin = test_scenario::take_from_address<Admin>(scenario, ADMIN);
+            let sui_meta = test_scenario::take_shared<CoinMetadata<SUI>>(scenario);
             let ctx = test_scenario::ctx(scenario);
 
-            add_asset<SUI>(&admin, std::string::utf8(b"sui"), &mut global, ctx);
+            add_asset<SUI>(&admin, &sui_meta, &mut global, ctx);
 
             test_scenario::return_shared(global);
+            test_scenario::return_shared(sui_meta);
             test_scenario::return_to_address(ADMIN, admin);
         };
         

@@ -1,7 +1,7 @@
 module crumb::dca {
     use sui::balance::{Self, Balance};
     use std::type_name::{Self, TypeName};
-    use sui::coin::{Self, Coin};
+    use sui::coin::{Self, Coin, CoinMetadata};
     use sui::object::{Self, ID, UID};
     use sui::transfer;
     use sui::tx_context::{TxContext, sender};
@@ -38,7 +38,8 @@ module crumb::dca {
         id: UID,
         name: String,
         // Assume USD has 6 decimals
-        price_usd: u64
+        price_usd: u64,
+        decimals: u8,
     }
 
     struct Global has key {
@@ -73,14 +74,16 @@ module crumb::dca {
         )
     }
 
-    public fun add_asset<Token>(_: &Admin, name: String, global: &mut Global, ctx: &mut TxContext) {
+    // There's only 1 CoinMeta per coin, which will be the source of truth
+    public fun add_asset<Token>(_: &Admin, coin_meta: &CoinMetadata<Token>, global: &mut Global, ctx: &mut TxContext) {
         // TODO: Is this the idiomatic way to do this? no global storage in sui
         let asset_type = type_name::get<Token>();
         assert!(table::contains(&global.available_assets, asset_type) == false, EDuplicateAsset);
         table::add(&mut global.available_assets, asset_type, true);
         let asset = Asset<Token> {
             id: object::new(ctx),
-            name: name,
+            name: coin::get_name(coin_meta),
+            decimals: coin::get_decimals(coin_meta),
             price_usd: 0
         };
 
