@@ -1,0 +1,22 @@
+{
+  "name": "@crumb-finance/sdk",
+  "version": "1.0.0",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "src",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "build": "tsc --build"
+  },
+  "devDependencies": {
+    "@types/bn.js": "^5.1.2"
+  },
+  "dependencies": {
+    "@mysten/sui.js": "^0.45.1",
+    "bn.js": "^5.2.1"
+  }
+}
