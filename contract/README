@@ -1,15 +1,32 @@
 # Crumb Finance
+
 Dollar cost averaging protocol that allows any Sui coins to be swapped on a recurring basis.
 
 Users can create positions by depositing a coin and specifying what currency they want to swap to, trade amount per swap, and the frequency. The initial implementation uses a whitelisted set of assets and relies on keepers to provide the spot asset in exchange, following an oracle price. This can easily be modified to support difference price feeds.
 
 ## Development
+
 ### Build contracts
+
 ```
 sui move build
 ```
 
 ### Test
+
 ```
 sui move test
+```
+
+### Publish package
+
+```
+sui client publish --gas-budget 100000000 --skip-dependency-verification
+```
+
+### Mint Test USDC
+
+```
+$CRUMB_PACKAGE
+sui client call --package 0x0000000000000000000000000000000000000000000000000000000000000002 --module coin --gas-budget 10000000 --function mint_and_transfer --args $CRUMB_PACKAGE 1000000000000 $CRUMB_PACKAGE --type-args $CRUMB_PACKAGE::usdc::USDC
 ```
