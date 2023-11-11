@@ -25,4 +25,18 @@ module crumb::math {
     public fun ceil_div_u128(a: u128, b: u128): u128 {
         if (a == 0) 0 else (a - 1) / b + 1
     }
+
+    public fun pow(x: u64, y: u64): u128 {
+        let result = 1u128;
+        let z = y;
+        let u = (x as u128);
+        while (z > 0) {
+            if (z % 2 == 1) {
+                result = (u * result as u128);
+            };
+            u = (u * u as u128);
+            z = z / 2;
+        };
+        result
+    }
 }

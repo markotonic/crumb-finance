@@ -5,11 +5,11 @@ module crumb::dca {
     use sui::object::{Self, ID, UID};
     use sui::transfer;
     use sui::tx_context::{Self, TxContext, sender};
-    use std::string::{String};
+    use std::string::{Self, String};
     use sui::table::{Self, Table};
     use sui::event;
 
-    use crumb::math::muldiv_u128;
+    use crumb::math::{muldiv_u128, pow};
 
     const EInsufficientFunds: u64 = 100;
     const EBadTrade: u64 = 101;
@@ -68,6 +68,7 @@ module crumb::dca {
 
     struct AssetAddEvent has copy, drop {
         asset_id: ID,
+        coin_type_name: String,
         coinmeta_id: ID,
         name: String
     }
@@ -103,10 +104,12 @@ module crumb::dca {
             decimals: coin::get_decimals(coin_meta),
             price_usd: 0
         };
-
+        
+        let asset_type_copy = type_name::get<Token>();
         event::emit(AssetAddEvent {
             asset_id: object::id(&asset),
             coinmeta_id: object::id(coin_meta),
+            coin_type_name: string::from_ascii(type_name::into_string(asset_type_copy)),
             name
         });
 
@@ -163,9 +166,9 @@ module crumb::dca {
         let trade_in_amount = position.amount_per_trade;
         let trade_out_amount: u64 = balance::value<OutputToken>(&output_asset_balance);
 
-        let base: u128 = 10;
-        let trade_in_usd = muldiv_u128((trade_in_amount as u128), (input_asset_price as u128), 10);
-        let trade_out_usd = muldiv_u128((trade_out_amount as u128), (output_asset_price as u128), 10);
+        let one_in = pow(10, (input_asset.decimals as u64));
+        let trade_in_usd = muldiv_u128((trade_in_amount as u128), (input_asset_price as u128), pow(10, (input_asset.decimals as u64)));
+        let trade_out_usd = muldiv_u128((trade_out_amount as u128), (output_asset_price as u128), pow(10, (output_asset.decimals as u64)));
         // TODO: account for fee
         assert!(trade_in_usd <= trade_out_usd, EBadTrade);
         

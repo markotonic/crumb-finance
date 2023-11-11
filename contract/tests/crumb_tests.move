@@ -13,7 +13,7 @@ module crumb::tests {
         init_for_testing, update_price, 
         create_position, execute_trade
     };
-    use crumb::usd::{USD, init_test_usd};
+    use crumb::usdc::{USDC, init_test_usdc};
     use crumb::test_sui::{TEST_SUI, init_test_sui};
 
     const ADMIN: address = @0xABBA;
@@ -44,7 +44,7 @@ module crumb::tests {
         test_scenario::next_tx(&mut scenario, sender);
         {
             let ctx = test_scenario::ctx(&mut scenario);
-            init_test_usd(ctx);
+            init_test_usdc(ctx);
         };
         test_scenario::next_tx(&mut scenario, sender);
         {
@@ -59,16 +59,16 @@ module crumb::tests {
     fun setup_assets_test(scenario: &mut test_scenario::Scenario) {
         let global = test_scenario::take_shared<Global>(scenario);
         let admin = test_scenario::take_from_address<Admin>(scenario, ADMIN);
-        let usd_meta = test_scenario::take_shared<CoinMetadata<USD>>(scenario);
+        let usdc_meta = test_scenario::take_shared<CoinMetadata<USDC>>(scenario);
         let sui_meta = test_scenario::take_shared<CoinMetadata<TEST_SUI>>(scenario);
         let ctx = test_scenario::ctx(scenario);
 
         add_asset<TEST_SUI>(&admin, &sui_meta, &mut global, ctx);
-        add_asset<USD>(&admin, &usd_meta, &mut global, ctx);
+        add_asset<USDC>(&admin, &usdc_meta, &mut global, ctx);
 
         test_scenario::return_shared(global);
         test_scenario::return_shared(sui_meta);
-        test_scenario::return_shared(usd_meta);
+        test_scenario::return_shared(usdc_meta);
         test_scenario::return_to_address(ADMIN, admin);
     }
 
@@ -79,9 +79,9 @@ module crumb::tests {
         let ctx = test_scenario::ctx(scenario);
 
         let sui_asset = test_scenario::take_shared<Asset<TEST_SUI>>(scenario);
-        let usd_asset = test_scenario::take_shared<Asset<USD>>(scenario);
+        let usd_asset = test_scenario::take_shared<Asset<USDC>>(scenario);
         update_price<TEST_SUI>(&oracle, &mut sui_asset, sui_price); // $0.50
-        update_price<USD>(&oracle, &mut usd_asset, 1000000); // $1.00
+        update_price<USDC>(&oracle, &mut usd_asset, 1000000); // $1.00
 
         test_scenario::return_shared(sui_asset);
         test_scenario::return_shared(usd_asset);
@@ -110,7 +110,6 @@ module crumb::tests {
         test_scenario::end(scenario_val);
     }
 
-    
 
     #[test]
     #[expected_failure(abort_code = dca::EDuplicateAsset)]
@@ -183,15 +182,15 @@ module crumb::tests {
         test_scenario::next_tx(scenario, ADMIN);
         {
             let ctx = test_scenario::ctx(scenario);
-            let usd_balance = balance::create_for_testing<USD>(dollars(100)); 
+            let usd_balance = balance::create_for_testing<USDC>(dollars(100)); 
             let deposit = coin::from_balance(usd_balance, ctx);
             let amount: u64 = 10000000;
-            create_position<USD, TEST_SUI>(deposit, amount, 1, ctx);
+            create_position<USDC, TEST_SUI>(deposit, amount, 1, ctx);
         };
 
         test_scenario::next_tx(scenario, ADMIN);
         {
-            let long_position = test_scenario::take_shared<Position<USD,TEST_SUI>>(scenario);
+            let long_position = test_scenario::take_shared<Position<USDC,TEST_SUI>>(scenario);
             test_scenario::return_shared(long_position);
         };
 
@@ -213,11 +212,11 @@ module crumb::tests {
         test_scenario::next_tx(scenario, ADMIN);
         {
             let ctx = test_scenario::ctx(scenario);
-            let usd_balance = balance::create_for_testing<USD>(dollars(5)); 
+            let usd_balance = balance::create_for_testing<USDC>(dollars(5)); 
             let deposit = coin::from_balance(usd_balance, ctx);
             let amount: u64 = dollars(1);
             // 5 trades of $1 each
-            create_position<USD, TEST_SUI>(deposit, amount, 1, ctx);
+            create_position<USDC, TEST_SUI>(deposit, amount, 1, ctx);
         };
 
         test_scenario::next_tx(scenario, KEEPER);
@@ -227,12 +226,12 @@ module crumb::tests {
             let sui_balance = balance::create_for_testing<TEST_SUI>(sui(2)); 
             let sui_coin = coin::from_balance(sui_balance, ctx);
 
-            let long_position = test_scenario::take_shared<Position<USD,TEST_SUI>>(scenario);
+            let long_position = test_scenario::take_shared<Position<USDC,TEST_SUI>>(scenario);
             let sui_asset = test_scenario::take_shared<Asset<TEST_SUI>>(scenario);
-            let usd_asset = test_scenario::take_shared<Asset<USD>>(scenario);
+            let usd_asset = test_scenario::take_shared<Asset<USDC>>(scenario);
 
-            execute_trade<USD, TEST_SUI>(&mut long_position, sui_coin, &usd_asset, &sui_asset, test_scenario::ctx(scenario));
-            // assert!(balance::value<USD>(&usd_balance) == dollars(1), 0);
+            execute_trade<USDC, TEST_SUI>(&mut long_position, sui_coin, &usd_asset, &sui_asset, test_scenario::ctx(scenario));
+            // assert!(balance::value<USDC>(&usd_balance) == dollars(1), 0);
             // balance::destroy_for_testing(usd_balance);
 
             test_scenario::return_shared(long_position);
@@ -258,11 +257,11 @@ module crumb::tests {
         test_scenario::next_tx(scenario, ADMIN);
         {
             let ctx = test_scenario::ctx(scenario);
-            let usd_balance = balance::create_for_testing<USD>(dollars(5)); 
+            let usd_balance = balance::create_for_testing<USDC>(dollars(5)); 
             let deposit = coin::from_balance(usd_balance, ctx);
             let amount: u64 = dollars(1);
             // 5 trades of $1 each
-            create_position<USD, TEST_SUI>(deposit, amount, 1, ctx);
+            create_position<USDC, TEST_SUI>(deposit, amount, 1, ctx);
         };
 
         test_scenario::next_tx(scenario, KEEPER);
@@ -272,11 +271,11 @@ module crumb::tests {
             let sui_balance = balance::create_for_testing<TEST_SUI>(sui(1)); 
             let sui_coin = coin::from_balance(sui_balance, ctx);
 
-            let long_position = test_scenario::take_shared<Position<USD,TEST_SUI>>(scenario);
+            let long_position = test_scenario::take_shared<Position<USDC,TEST_SUI>>(scenario);
             let sui_asset = test_scenario::take_shared<Asset<TEST_SUI>>(scenario);
-            let usd_asset = test_scenario::take_shared<Asset<USD>>(scenario);
+            let usd_asset = test_scenario::take_shared<Asset<USDC>>(scenario);
 
-            execute_trade<USD, TEST_SUI>(&mut long_position, sui_coin, &usd_asset, &sui_asset, test_scenario::ctx(scenario));
+            execute_trade<USDC, TEST_SUI>(&mut long_position, sui_coin, &usd_asset, &sui_asset, test_scenario::ctx(scenario));
             // balance::destroy_for_testing(usd_balance);
 
             test_scenario::return_shared(long_position);
