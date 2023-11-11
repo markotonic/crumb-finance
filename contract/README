@@ -28,5 +28,32 @@ sui client publish --gas-budget 100000000 --skip-dependency-verification
 
 ```
 $CRUMB_PACKAGE
-sui client call --package 0x0000000000000000000000000000000000000000000000000000000000000002 --module coin --gas-budget 10000000 --function mint_and_transfer --args $CRUMB_PACKAGE 1000000000000 $CRUMB_PACKAGE --type-args $CRUMB_PACKAGE::usdc::USDC
+sui client call --package 0x0000000000000000000000000000000000000000000000000000000000000002 --module coin --gas-budget 10000000 --function mint_and_transfer --args $TREASURY_CAP 1000000000000 $RECIPIENT --type-args $CRUMB_PACKAGE::usdc::USDC
+```
+
+### Switch from devnet to testnet
+
+```
+sui client envs
+sui client new-env --alias testnet --rpc https://fullnode.testnet.sui.io:443
+sui client switch --env testnet
+```
+
+### Request tokens
+
+```
+curl --location --request POST 'https://faucet.devnet.sui.io/gas' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "FixedAmountRequest": {
+        "recipient": "ADDRESS"
+    }
+}'
+
+```
+
+### Get address on CLI
+
+```
+sui client addresses
 ```
