@@ -11,7 +11,8 @@ export type CrumbMethodName =
   | 'create_position'
   | 'execute_trade'
   | 'close_position'
-  | 'withdraw_funds';
+  | 'withdraw_funds'
+  | 'update_price';
 
 type EnforceProperties<T, K extends keyof T> = Omit<T, K> & {
   [P in K]-?: Exclude<T[P], undefined>;
@@ -178,14 +179,21 @@ export type ExecuteTradeParams = {
   positionId: string;
 
   /**
-   * IDs of coins to be sold, will be merged into one coin before
-   * the splitting off the trade amount.
+   * IDs of coins to be sold, will be merged into one coin before the splitting
+   * off the trade amount. The simplest way to use this is to call
+   * "sui.getOwnedCoins" and simply pass a list containing all coins of the
+   * appropriate type.
    */
   tradeOutCoinIds: string[];
 
-  // lol
+  /**
+   * The crumb Asset ID of the input coin
+   */
   inputAssetId: string;
 
+  /**
+   * The crumb Asset ID of the output coin
+   */
   outputAssetId: string;
 
   // type arg
@@ -194,9 +202,17 @@ export type ExecuteTradeParams = {
   // type arg
   outputCoinType: string;
 
-  tradeAmountMax?: boolean;
+  /**
+   * Set to true if the entire combined balance of tradeOutCoinIds should be
+   * sold. If set, tradeAmount is ignored.
+   */
+  tradeAmountMax?: true;
 
-  tradeAmount?: string;
+  /**
+   * Specific amount of the output coin to sell in native format. Either this or
+   * tradeAmountMax must be set.
+   */
+  tradeAmount?: string | BN;
 };
 
 /**
@@ -216,17 +232,8 @@ export type ExecuteTradeParams = {
 export function executeTrade(
   packageId: string,
   tx: TransactionBlock,
-  _params: Partial<ExecuteTradeParams>
+  params: ExecuteTradeParams
 ) {
-  const params = requireProperties(_params, [
-    'tradeOutCoinIds',
-    'positionId',
-    'inputAssetId',
-    'outputAssetId',
-    'inputCoinType',
-    'outputCoinType',
-  ]);
-
   const coin = mergeCoinsAndSplit(
     tx,
     params.tradeOutCoinIds,
@@ -286,4 +293,36 @@ export function withdrawFunds(
   });
 
   return res;
+}
+
+export type UpdatePriceParams = {
+  oracleCapId: string;
+  assetId: string;
+  assetTokenType: string;
+  priceBn: BN;
+};
+
+/**
+ * Add update_price call to transaction. Signature:
+ *
+ * ```
+ * public fun update_price<T>(_: &Oracle, asset: &mut Asset<T>, price_usd: u64) {
+ *     asset.price_usd = price_usd
+ * }
+ * ```
+ */
+export function updatePrice(
+  packageId: string,
+  tx: TransactionBlock,
+  params: UpdatePriceParams
+) {
+  tx.moveCall({
+    target: crumbMethod(packageId, 'update_price'),
+    arguments: [
+      tx.object(params.oracleCapId),
+      tx.object(params.assetId),
+      tx.pure(params.priceBn.toString(), 'u64'),
+    ],
+    typeArguments: [params.assetTokenType],
+  });
 }

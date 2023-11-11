@@ -14,7 +14,7 @@ import { nonEmpty } from '../util';
  * you don't want Asset and CoinMetadata together, so just get them all and
  * merge into a single object for convenience.
  */
-type MessyAsset = {
+export type MessyAsset = {
   asset: Asset;
   event: EventWithDate<AssetAddEvent>;
   coinMetadata: CoinMetadata;

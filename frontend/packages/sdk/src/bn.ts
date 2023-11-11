@@ -90,6 +90,16 @@ export const bnToApproximateDecimal = (
   return parseFloat(bnToFixed(v, decimals, precision));
 };
 
-export const decimalToBn = (price: number, decimals: number) => {
+export const decimalToBn = (price: number | string, decimals: number) => {
   return new BN(toDecimalPaddedString(price.toString(), decimals));
+};
+
+// TODO: rename, priceUsdBnToDecimal
+export const priceUsdToDecimal = (price: BN, precision?: number) => {
+  // USDC has 6 decimals
+  return bnToApproximateDecimal(price, 6, precision);
+};
+
+export const priceUsdDecimalToBn = (price: number) => {
+  return decimalToBn(price, 6);
 };

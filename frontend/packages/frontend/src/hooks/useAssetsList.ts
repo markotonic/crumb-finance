@@ -4,7 +4,6 @@ import { useQuery } from '@tanstack/react-query';
 import { QUERY_KEYS } from '@/util/constants';
 import { useCrumb } from '@/context/RpcContext';
 
-// TODO: fetch all pages
 export default function useAssetsList() {
   const crumb = useCrumb();
 

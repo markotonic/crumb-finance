@@ -1,5 +1,4 @@
 import { SuiObjectResponse } from '@mysten/sui.js/client';
-import { SUI_NETWORK } from './constants';
 
 /**
  * Parse the display of a list of objects into a simple {object_id: display} map
@@ -17,12 +16,4 @@ export function parseObjectDisplays(
     },
     {}
   );
-}
-
-export function getExplorerUrl(
-  id: string,
-  kind: 'object' | 'address' = 'object'
-) {
-  // https://suiexplorer.com/object/0xeea308a42c6fbcc9bf5d563c5d8e1f774302be712ad1eae0bd8f65639aad2add?network=devnet
-  return `https://suiexplorer.com/${kind}/${id}?network=${SUI_NETWORK}`;
 }

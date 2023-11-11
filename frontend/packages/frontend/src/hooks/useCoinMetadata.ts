@@ -1,5 +1,5 @@
-import { useRpc } from '@/context/RpcContext';
-import { QUERY_KEYS, SUI_COIN_TYPE } from '@/util/constants';
+import { useCrumb } from '@/context/RpcContext';
+import { QUERY_KEYS, SUI_COIN_TYPE, SUI_ICON_URL } from '@/util/constants';
 import { CoinMetadata } from '@mysten/sui.js/dist/cjs/client';
 import { useQuery } from '@tanstack/react-query';
 
@@ -10,20 +10,17 @@ function isSuicoin(coinType: string) {
 function addSuiIconToMeta(m: CoinMetadata) {
   return {
     ...m,
-    iconUrl:
-      'https://s3.coinmarketcap.com/static-gravity/image/5bd0f43855f6434386c59f2341c5aaf0.png',
+    iconUrl: SUI_ICON_URL,
   } as CoinMetadata;
 }
 
 export default function useCoinMetadata(coinType: string) {
-  const provider = useRpc();
+  const crumb = useCrumb(); // use the crumb client for cache
 
   return useQuery({
     queryKey: [QUERY_KEYS.COIN_METADATA, coinType],
     queryFn: async () => {
-      const meta = await provider.getCoinMetadata({
-        coinType,
-      });
+      const meta = await crumb.getCoinMetadata(coinType);
 
       if (!meta) {
         throw new Error(`No metadata for coin type: ${coinType}`);

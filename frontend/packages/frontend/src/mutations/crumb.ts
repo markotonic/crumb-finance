@@ -9,12 +9,15 @@ import {
   createPosition as addCreatePosition,
   withdrawFunds as addWithdrawFunds,
   executeTrade as addExecuteTrade,
+  updatePrice as addUpdatePrice,
   ClosePositionParams,
   Position,
+  UpdatePriceParams,
+  priceUsdDecimalToBn,
 } from '@crumb-finance/sdk';
 import { CRUMB_PACKAGE_ID } from '@/config';
 import useAssetsList from '@/hooks/useAssetsList';
-import { useRpc } from '@/context/RpcContext';
+import { useCrumb, useRpc } from '@/context/RpcContext';
 
 const GAS_BUDGET = 100_000_000; // 0.1 SUI
 
@@ -37,7 +40,6 @@ export function useCreatePositionMutation({
 
   return useMutation({
     mutationFn: (params: CreatePositionParams) => {
-      console.log('params', params);
       if (!currentAccount?.address)
         throw new Error('You need to connect your wallet!');
 
@@ -65,8 +67,43 @@ export function useWithdrawFundsMutation({
         throw new Error('You need to connect your wallet!');
 
       const tx = new TransactionBlock();
-      tx.setGasBudget(GAS_BUDGET); // 0.1 SUI
+      tx.setGasBudget(GAS_BUDGET);
       addWithdrawFunds(CRUMB_PACKAGE_ID, tx, params);
+
+      return signAndExecute({ tx });
+    },
+    onSuccess,
+    onError: onError || defaultOnError,
+  });
+}
+
+export function useUpdatePriceMutation({ onSuccess, onError }: MutationParams) {
+  const { currentAccount } = useWalletKit();
+  const { signAndExecute } = useTransactionExecution();
+  const { data: assets } = useAssetsList();
+  const sui = useRpc();
+  const crumb = useCrumb();
+
+  return useMutation({
+    mutationFn: async () => {
+      if (!currentAccount?.address)
+        throw new Error('You need to connect your wallet!');
+
+      const oracleCapId = await crumb.getOracleCapId(currentAccount.address);
+
+      const asset = assets?.[0];
+      if (!asset) {
+        throw new Error('no assets found');
+      }
+
+      const tx = new TransactionBlock();
+      tx.setGasBudget(GAS_BUDGET);
+      addUpdatePrice(CRUMB_PACKAGE_ID, tx, {
+        oracleCapId,
+        assetId: asset.event.event.asset_id,
+        priceBn: priceUsdDecimalToBn(4.2),
+        assetTokenType: asset.coinType,
+      });
 
       return signAndExecute({ tx });
     },

@@ -29,22 +29,19 @@ type MessyPosition = {
   outputCoinMetadata: CoinMetadata;
 };
 
-function extractOwnedPositionEvents(
-  events: PaginatedEvents,
-  owner: string
+function extractPositionEvents(
+  events: PaginatedEvents
 ): PositionCreationEventWithDate[] {
-  return events.data
-    .filter((item) => item.sender === owner)
-    .map((item) => {
-      return {
-        createdAt: item.timestampMs
-          ? new Date(Number(item.timestampMs))
-          : undefined,
-        event: toPositionCreationEvent(
-          item.parsedJson as RawPositionCreationEvent
-        ),
-      };
-    });
+  return events.data.map((item) => {
+    return {
+      createdAt: item.timestampMs
+        ? new Date(Number(item.timestampMs))
+        : undefined,
+      event: toPositionCreationEvent(
+        item.parsedJson as RawPositionCreationEvent
+      ),
+    };
+  });
 }
 
 function extractPosition(rawObject: SuiObjectResponse): Position {
@@ -82,10 +79,15 @@ export async function fetchPosition(sui: SuiClient, positionId: string) {
   };
 }
 
-export async function getOwnedPositions(
+export interface GetPositionsFilter {
+  owner?: string;
+  coinTypes?: string[];
+}
+
+export async function getPositions(
   sui: SuiClient,
   packageId: string,
-  owner: string
+  filter?: GetPositionsFilter
 ): Promise<MessyPosition[]> {
   const events = await sui.queryEvents({
     query: {
@@ -93,10 +95,12 @@ export async function getOwnedPositions(
     },
   });
 
-  const ownedEvents = extractOwnedPositionEvents(events, owner);
+  const filteredEvents = extractPositionEvents(events).filter((item) =>
+    filter?.owner ? item.event.creator === filter.owner : true
+  );
 
   const messyPositions = await Promise.all(
-    ownedEvents.map(async (event) => {
+    filteredEvents.map(async (event) => {
       try {
         const { position, typeArgs } = await fetchPosition(
           sui,

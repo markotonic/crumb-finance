@@ -30,3 +30,12 @@ export function objArg(
 
 export const nonEmpty = <TValue>(v: TValue | null | undefined): v is TValue =>
   v !== null && v !== undefined;
+
+export function getExplorerUrl(
+  id: string,
+  kind: 'object' | 'address' | 'txblock' = 'object',
+  network: 'devnet' | 'mainnet' = 'devnet'
+) {
+  // https://suiexplorer.com/object/0xeea308a42c6fbcc9bf5d563c5d8e1f774302be712ad1eae0bd8f65639aad2add?network=devnet
+  return `https://suiexplorer.com/${kind}/${id}?network=${network}`;
+}

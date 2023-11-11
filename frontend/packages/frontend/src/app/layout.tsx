@@ -1,73 +1,132 @@
 /** @jsxImportSource @emotion/react */
 'use client';
 
-import tw, { css } from 'twin.macro';
+import tw, { css, styled } from 'twin.macro';
 import { useEffect, useState } from 'react';
-import { ToastContainer } from 'react-toastify';
+import { ToastContainer, toast } from 'react-toastify';
 import { ConnectButton, useWalletKit } from '@mysten/wallet-kit';
 import 'react-toastify/dist/ReactToastify.css';
 
-import GlobalStyles from '@/styles/GlobalStyles';
-import Providers from './providers';
-import Icon from '@/components/Icon';
-import { CDot, CDots } from '@/components/Shape';
-import { useRpc } from '@/context/RpcContext';
-import { SUI_NETWORK } from '@/util/constants';
-import { getExplorerUrl } from '@/util/sui';
+import { getExplorerUrl, priceUsdToDecimal } from '@crumb-finance/sdk';
 
-const WalletConnectIndicator: React.FC = (props) => {
+import GlobalStyles from '@/styles/GlobalStyles';
+import Icon from '@/components/Icon';
+import Providers from './providers';
+import { CDot, CDots } from '@/components/Shape';
+import { SUI_COIN_TYPE, SUI_ICON_URL, SUI_NETWORK } from '@/util/constants';
+import { useRpc } from '@/context/RpcContext';
+import { IS_DEV } from '@/config';
+import { useUpdatePriceMutation } from '@/mutations/crumb';
+import useAssetsList from '@/hooks/useAssetsList';
+import CoinIcon from '@/components/CoinIcon';
+
+const DropdownContainer = tw.div`
+  relative p-3 py-1.5
+  flex items-center gap-2
+  text-ellipsis text-sm
+  bg-beige hover:bg-black/5
+`;
+const DropdownContent = styled.div(
+  tw`absolute top-full`,
+  tw`opacity-0 overflow-hidden max-h-0`,
+  tw`border border-black`,
+  tw`group-hover:(max-h-[140px] shadow-lg opacity-100)`,
+  tw`shadow-none duration-150 ease-out divide-y divide-black`,
+  css`
+    transition-property: color, background-color, border-color,
+      text-decoration-color, fill, stroke, opacity, box-shadow, transform,
+      filter, backdrop-filter, max-height;
+  `
+);
+const DropdownItem = styled.button<{ variant?: 'primary' | 'warning' }>(
+  ({ variant = 'primary' }) => [
+    variant === 'primary'
+      ? tw`bg-beige hover:bg-black/5`
+      : tw`bg-red-600 hover:bg-red-500 text-white`,
+  ],
+  tw`py-3 h-full w-full flex items-center justify-center transition font-mono font-bold`
+);
+
+function CrumbLogo() {
+  return (
+    <DropdownContainer className="group" tw="w-24 sm:border-r border-black">
+      <DropdownContent tw="right-[-1px] left-0 border-l-0">
+        <a href="#" target="_blank" rel="noreferrer">
+          <DropdownItem>Github</DropdownItem>
+        </a>
+      </DropdownContent>
+      <p tw="font-mono font-bold px-1">
+        <Icon.Cookie tw="inline mb-1 mr-1.5 opacity-80" />
+        Crumb
+      </p>
+    </DropdownContainer>
+  );
+}
+
+function SuiPriceIndicator() {
+  const { data: assets } = useAssetsList();
+  const sui = assets?.find((a) => a.coinType === SUI_COIN_TYPE);
+
+  if (sui) {
+    return (
+      <DropdownContainer className="group" tw="w-48 sm:border-l border-black">
+        <DropdownContent tw="left-[-1px] right-0 border-r-0">
+          <DropdownItem>View on CoinGecko</DropdownItem>
+        </DropdownContent>
+
+        <div tw="font-mono font-bold px-1 flex items-center gap-2">
+          <CoinIcon tw="h-5 w-5" coinType={SUI_COIN_TYPE} />
+          SUI ${priceUsdToDecimal(sui.asset.price_usd).toFixed(3)}
+        </div>
+      </DropdownContainer>
+    );
+  }
+}
+
+function WalletConnectIndicator() {
   const { currentAccount, disconnect } = useWalletKit();
+  const updatePrice = useUpdatePriceMutation({
+    onSuccess: () => {
+      toast.success('Prices updated');
+    },
+  });
 
   return (
-    <div
-      className="group"
-      tw="relative p-3 py-1.5 bg-beige sm:border-l border-black w-48 text-ellipsis flex items-center gap-2 text-sm"
-    >
-      {/* left hack to make left border line up */}
-      <div
-        tw="absolute top-full left-[-1px] right-0 opacity-0 overflow-hidden max-h-0 border border-r-0 border-black group-hover:(max-h-[140px] shadow-lg opacity-100) shadow-none duration-150 ease-out divide-y divide-black"
-        css={css`
-          /* transition: max-height 0.2s; */
-          transition-property:
-            color,
-            background-color,
-            border-color,
-            text-decoration-color,
-            fill,
-            stroke,
-            opacity,
-            box-shadow,
-            transform,
-            filter,
-            backdrop-filter max-height;
-        `}
-      >
+    <DropdownContainer className="group" tw="w-48 sm:border-l border-black">
+      {/* make left border line up */}
+      <DropdownContent tw="left-[-1px] right-0 border-r-0">
         <a
-          href={getExplorerUrl(currentAccount?.address || '', 'address')}
+          href={getExplorerUrl(
+            currentAccount?.address || '',
+            'address',
+            SUI_NETWORK
+          )}
           target="_blank"
           rel="noreferrer"
         >
-          <button tw="py-3 h-full w-full flex items-center justify-center hover:bg-black/5 transition font-mono font-bold bg-beige">
-            <span>View Account</span>
-          </button>
+          <DropdownItem>View Account</DropdownItem>
         </a>
-        <button
-          tw="py-3 h-full w-full flex items-center justify-center bg-red-600 hover:bg-red-500 text-white transition font-mono font-bold"
-          onClick={disconnect}
-        >
-          <span>Disconnect</span>
-        </button>
-      </div>
+
+        {IS_DEV && (
+          <DropdownItem onClick={() => updatePrice.mutate()}>
+            Dev: Update prices
+          </DropdownItem>
+        )}
+
+        <DropdownItem variant="warning" onClick={disconnect}>
+          Disconnect
+        </DropdownItem>
+      </DropdownContent>
+
       <div>
         <span tw="block rounded-full w-5 h-5 bg-gradient-to-tr from-cyan-500 to-lime-400 border border-black"></span>
       </div>
-
       <p tw="cursor-default font-mono font-bold overflow-hidden text-ellipsis mt-0.5">
         {currentAccount?.address || 'Connecting...'}
       </p>
-    </div>
+    </DropdownContainer>
   );
-};
+}
 
 function ConnectWalletDialog() {
   return (
@@ -75,7 +134,7 @@ function ConnectWalletDialog() {
       <div tw="flex items-center justify-center gap-6">
         <Icon.Cookie tw="h-8 w-8" />
         <CDots />
-        <Icon.Cookie tw="h-8 w-8" />
+        <img tw="h-9 w-9 rounded-full object-cover" src={SUI_ICON_URL} />
       </div>
       <h1 tw="mt-6 text-center text-xl px-6">
         To use Crumb, you need to connect a SUI wallet.
@@ -254,12 +313,8 @@ export default function RootLayout({
                     css={visible ? tw`blur-none` : tw`blur-lg opacity-80`}
                   >
                     <header tw="flex items-stretch justify-between border-b border-black">
-                      <div tw="flex items-center px-4 sm:border-r border-black">
-                        <p tw="font-mono font-bold">
-                          <Icon.Cookie tw="inline mb-1 mr-1.5 opacity-80" />
-                          Crumb
-                        </p>
-                      </div>
+                      <CrumbLogo />
+                      {/* <SuiPriceIndicator /> */}
                       <WalletConnectIndicator />
                     </header>
                     <div

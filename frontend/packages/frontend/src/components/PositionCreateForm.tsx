@@ -2,64 +2,68 @@
 import tw from 'twin.macro';
 import BN from 'bn.js';
 import { useWalletKit } from '@mysten/wallet-kit';
-import { CoinStruct } from '@mysten/sui.js/client';
 import { useForm } from 'react-hook-form';
-
-import { LoadableButton } from './Button';
-import Input from './Input';
-import { useCreatePositionMutation } from '@/mutations/crumb';
-import { useOwnedCoins } from '@/hooks/useOwnedCoins';
-import { Asset, CreatePositionParams } from '@crumb-finance/sdk';
-import useCoinMetadata from '@/hooks/useCoinMetadata';
-import { bnToApproximateDecimal, decimalToBn } from '@/util/math';
-import { useEffect } from 'react';
-import { toast } from 'react-toastify';
 import { useQueryClient } from '@tanstack/react-query';
-import { QUERY_KEYS, SUI_COIN_TYPE } from '@/util/constants';
-import useAssetsList from '@/hooks/useAssetsList';
-import Modal from './headless/Modal';
+import { CreatePositionParams, decimalToBn } from '@crumb-finance/sdk';
+import { MessyAsset } from '@crumb-finance/sdk/dist/query/asset';
+
 import CoinIcon from './CoinIcon';
 import Icon from './Icon';
+import Input from './Input';
+import Modal from './headless/Modal';
+import useAssetsList from '@/hooks/useAssetsList';
+import useCoinMetadata from '@/hooks/useCoinMetadata';
+import { LoadableButton } from './Button';
+import { QUERY_KEYS, SUI_COIN_TYPE } from '@/util/constants';
+import { toast } from 'react-toastify';
+import { useCreatePositionMutation } from '@/mutations/crumb';
+import { useEffect } from 'react';
+import { useOwnedCoins } from '@/hooks/useOwnedCoins';
 import { useWalletBalance } from '@/hooks/useWalletBalance';
 
 const Label = tw.label`font-bold text-sm`;
 
-// FC extends html option . Must accept html option props
-const CoinOption: React.FC<{ coin: CoinStruct }> = ({ coin }) => {
-  const { data } = useCoinMetadata(coin?.coinType);
-
-  if (!data) {
-    return <option value={coin.coinObjectId}>...</option>;
-  }
+const AssetOption: React.FC<{
+  asset: MessyAsset;
+  onClick: (a: MessyAsset) => unknown;
+}> = ({ asset, onClick }) => {
+  const { data: balance } = useWalletBalance(asset.coinType);
 
   return (
-    <option value={coin.coinObjectId}>
-      {data.symbol} (
-      {bnToApproximateDecimal(new BN(coin.balance), data.decimals)})
-    </option>
+    <div
+      tw="flex items-center justify-between gap-6 hover:underline my-3 transition cursor-pointer"
+      onClick={() => onClick(asset)}
+    >
+      <div tw="flex items-center gap-2">
+        <CoinIcon tw="h-10 w-10" coinType={asset.coinType} />
+        <div tw="flex flex-col justify-between">
+          <p tw="leading-none text-lg font-medium">
+            {asset.coinMetadata.symbol}
+          </p>
+          <p tw="text-base">{asset.coinMetadata.name}</p>
+        </div>
+      </div>
+
+      <p tw="text-lg tabular-nums font-medium">
+        {balance?.balanceDecimal?.toFixed(2) || '---'}{' '}
+        {asset.coinMetadata.symbol}
+      </p>
+    </div>
   );
 };
 
-// const AssetOption: React.FC<{asset: Asset}>=({asset})=>{
-//   asset.name
-// }
-
 const AssetSelect: React.FC<{
-  // control: Control<CreatePositionParams, object>;
-  // setValue: (
-  //   name: keyof CreatePositionParams,
-  //   value: any,
-  //   options?: Partial<{ shouldValidate: boolean; shouldDirty: boolean }>
-  // ) => void;
-  // name: keyof CreatePositionParams;
-  onSelect: (asset: Asset) => void;
-  selected?: Asset;
+  onSelect: (asset: MessyAsset) => void;
+  selectedCoinType?: string;
 }> = ({
   // name, control, setValue,
   onSelect,
   ...props
 }) => {
   const { data: assets } = useAssetsList();
+  const selectedAsset = assets?.find(
+    (a) => a.coinType === props.selectedCoinType
+  );
 
   return (
     <Modal
@@ -74,17 +78,20 @@ const AssetSelect: React.FC<{
               openModal();
             }}
           >
-            {/* TODO */}
-            <CoinIcon tw="shrink-0 h-8 w-8" coinType={SUI_COIN_TYPE} />
+            {selectedAsset ? (
+              <CoinIcon
+                tw="shrink-0 h-8 w-8"
+                coinType={selectedAsset.coinType}
+              />
+            ) : (
+              <span tw="h-8 w-8 block bg-cyan-50 border border-black rounded-full" />
+            )}
             <span tw="grow overflow-hidden text-ellipsis flex flex-col items-start gap-0.5">
               <span tw="text-sm font-bold leading-none">
-                {/* TODO: should be symbol, not name */}
-                {/* {assets?.length ? assets[0].name : 'Select Asset'} */}
-                SUI
+                {selectedAsset?.coinMetadata.symbol || '---'}
               </span>
               <span tw="text-xs font-medium whitespace-nowrap leading-none overflow-hidden text-ellipsis">
-                {/* TODO */}
-                Sui Coin
+                {selectedAsset?.coinMetadata.name || '---'}
               </span>
             </span>
             <Icon.Select tw="shrink-0 text-sm" />
@@ -95,31 +102,16 @@ const AssetSelect: React.FC<{
     >
       {({ close }) =>
         !!assets &&
-        assets.map(({ event, asset, coinType, coinMetadata }) => {
+        assets.map((asset) => {
           return (
-            <div
-              key={event.event.asset_id}
-              tw="flex items-center justify-between gap-6 hover:underline my-3 transition cursor-pointer"
-              onClick={() => {
-                onSelect(asset);
+            <AssetOption
+              key={asset.coinType}
+              asset={asset}
+              onClick={(a) => {
+                onSelect(a);
                 close();
               }}
-            >
-              <div tw="flex items-center gap-2">
-                <CoinIcon tw="h-10 w-10" coinType={coinType} />
-                <div tw="flex flex-col justify-between">
-                  <p tw="leading-none text-lg font-medium">
-                    {coinMetadata.symbol}
-                  </p>
-                  <p tw="text-base">{coinMetadata.name}</p>
-                </div>
-              </div>
-
-              {/* TODO: Balance */}
-              <p tw="text-lg tabular-nums font-medium">
-                0.00 {coinMetadata.symbol}
-              </p>
-            </div>
+            />
           );
         })
       }
@@ -144,6 +136,12 @@ const PositionCreateForm: React.FC = (props) => {
   const outputCoinType = watch('outputCoinType');
   const { data: outputCoinMeta } = useCoinMetadata(outputCoinType);
 
+  // used when changing assets
+  const resetDepositAmount = () => {
+    setValue('depositAmountRaw', '');
+    setValue('depositAmountMax', false);
+  };
+
   // NOTE: didn't bother to rename the type in the tx params. We convert
   // to native BN in the submit handler
   const depositAmountDecimal = watch('depositAmountRaw');
@@ -153,7 +151,6 @@ const PositionCreateForm: React.FC = (props) => {
   // set default input/output on form load
   useEffect(() => {
     if (ownedCoins?.length && !inputCoinType && !outputCoinType) {
-      console.log('asdf');
       setValue('inputCoinType', ownedCoins[0].coinType);
       setValue('outputCoinType', ownedCoins[0].coinType);
     }
@@ -216,9 +213,10 @@ const PositionCreateForm: React.FC = (props) => {
         <div tw="space-y-2">
           <Label>Deposit</Label>
           <AssetSelect
+            selectedCoinType={inputCoinType}
             onSelect={(asset) => {
-              // TODO
-              setValue('inputCoinType', SUI_COIN_TYPE);
+              setValue('inputCoinType', asset.coinType);
+              resetDepositAmount();
             }}
           />
         </div>
@@ -226,9 +224,10 @@ const PositionCreateForm: React.FC = (props) => {
         <div tw="space-y-2">
           <Label>Purchase</Label>
           <AssetSelect
+            selectedCoinType={outputCoinType}
             onSelect={(asset) => {
-              // TODO
-              setValue('outputCoinType', SUI_COIN_TYPE);
+              setValue('outputCoinType', asset.coinType);
+              resetDepositAmount();
             }}
           />
         </div>
@@ -238,8 +237,8 @@ const PositionCreateForm: React.FC = (props) => {
         <div tw="flex items-center justify-between">
           <Label>Deposit amount</Label>
           <span tw="text-sm font-medium tabular-nums">
-            {/* TODO */}
-            Wallet: {walletBalance?.balanceDecimal?.toFixed(2) || '---'} SUI
+            Wallet: {walletBalance?.balanceDecimal?.toFixed(2) || '---'}{' '}
+            {outputCoinMeta?.symbol || '---'}
           </span>
         </div>
         <div tw="relative">
@@ -278,7 +277,6 @@ const PositionCreateForm: React.FC = (props) => {
         />
       </div>
 
-      {/* TODO: maybe use buttons */}
       <div tw="space-y-2">
         <Label>Frequency (Days)</Label>
         <Input

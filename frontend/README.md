@@ -35,3 +35,17 @@ export NEXT_PUBLIC_CRUMB_PACKAGE_ID=$CRUMB_PACKAGE_ID
 ; yarn frontend build
 ; yarn frontend next export
 ```
+
+## Running Oracle
+
+The oracle will load keys from the filesystem keystore at
+`~/.sui/sui_config/sui.keystore`. You can list available signer addresses with
+`sui client addresses`. You must use an address that owns a Crumb Oracle Cap object.
+
+```
+export SUI_NETWORK=devnet
+export CRUMB_PACKAGE_ID=<crumb package id here>
+export SIGNER_ID=<signer id here>
+
+yarn cli run-dev run-price-oracle
+```

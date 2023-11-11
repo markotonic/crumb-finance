@@ -2,26 +2,21 @@
 'use client';
 import 'twin.macro';
 import BN from 'bn.js';
-
-import usePosition from '@/hooks/usePosition';
-import usePositionsList from '@/hooks/usePositionsList';
-import Loading from './Loading';
-import Button from './Button';
-import useCoinMetadata from '@/hooks/useCoinMetadata';
-import { bnToApproximateDecimal } from '@/util/math';
-import useCoinPrice from '@/hooks/useCoinPrice';
-import {
-  useExecutePositionMutation,
-  useWithdrawFundsMutation,
-} from '@/mutations/crumb';
-import { QUERY_KEYS } from '@/util/constants';
 import { toast } from 'react-toastify';
 import { useQueryClient } from '@tanstack/react-query';
-import { getExplorerUrl } from '@/util/sui';
-import { useOwnedCoins } from '@/hooks/useOwnedCoins';
-import { IS_DEV } from '@/config';
-import CoinIcon from './CoinIcon';
+
+import { bnToApproximateDecimal, getExplorerUrl } from '@crumb-finance/sdk';
 import { PositionCreationEventWithDate } from '@crumb-finance/sdk/dist/query/position';
+
+import Button from './Button';
+import CoinIcon from './CoinIcon';
+import Loading from './Loading';
+import useCoinMetadata from '@/hooks/useCoinMetadata';
+import useCoinPrice from '@/hooks/useCoinPrice';
+import usePosition from '@/hooks/usePosition';
+import usePositionsList from '@/hooks/usePositionsList';
+import { QUERY_KEYS, SUI_NETWORK } from '@/util/constants';
+import { useWithdrawFundsMutation } from '@/mutations/crumb';
 
 const Stat: React.FC<{ label: React.ReactNode; value: React.ReactNode }> = ({
   label,
@@ -50,8 +45,6 @@ function PositionProgressBar({
   if (!data) {
     return '---';
   }
-
-  console.log('meta', data);
 
   const orig = bnToApproximateDecimal(originalAmount, data.decimals);
   const rem = bnToApproximateDecimal(remainingAmount, data.decimals);
@@ -87,15 +80,15 @@ const TokenValue: React.FC<{ coinType: string; raw: BN }> = ({
   raw,
 }) => {
   const { data: meta } = useCoinMetadata(coinType);
-  const { data } = useCoinPrice(meta?.symbol || '');
+  const { data: price } = useCoinPrice(coinType);
 
-  if (!meta || !data) {
+  if (!meta || price === undefined) {
     return '---';
   }
 
   const balance = bnToApproximateDecimal(raw, meta.decimals);
 
-  return `$${(data * balance).toFixed(2)}`;
+  return `$${(price * balance).toFixed(2)}`;
 };
 
 function formatSchedule(intervalSeconds: number) {
@@ -115,7 +108,6 @@ export function PositionOverview({
   event: PositionCreationEventWithDate;
 }) {
   const queryClient = useQueryClient();
-
   const { data, isLoading } = usePosition(event.position_id);
 
   const inputCoinType = data?.typeArgs?.[0] || '';
@@ -139,22 +131,6 @@ export function PositionOverview({
       });
     }
   };
-
-  // <HACK>
-  const { data: ownedcoins } = useOwnedCoins();
-  const executePosition = useExecutePositionMutation({
-    onSuccess: console.log,
-  });
-  const handleExecutePosition = () => {
-    executePosition.mutate({
-      sellCoinId: ownedcoins![0].coinObjectId,
-      position: data!.position,
-      inputCoinType: data!.typeArgs[0],
-      outputCoinType: data!.typeArgs[0],
-      positionId: event.position_id,
-    });
-  };
-  // </HACK>
 
   if (isLoading || !data) {
     return null;
@@ -206,7 +182,6 @@ export function PositionOverview({
           value={
             <TokenValue
               coinType={outputCoinType}
-              // TODO: need price
               raw={data.position.received}
             />
           }
@@ -222,7 +197,6 @@ export function PositionOverview({
         />
         <Stat
           label="Amount Per Trade"
-          // TODO
           value={
             inputCoin
               ? `${bnToApproximateDecimal(
@@ -243,7 +217,7 @@ export function PositionOverview({
         <Stat
           label="Next Purchase"
           value={
-            data.position.last_trade_time?.toLocaleString() ? 'todo' : 'Pending'
+            data.position.last_trade_time?.toLocaleString() ? 'TODO' : 'Pending'
           }
         />
       </div>
@@ -268,7 +242,7 @@ export function PositionOverview({
             Withdraw {outputCoin?.symbol || 'Funds'}
           </Button>
           <a
-            href={getExplorerUrl(event.position_id)}
+            href={getExplorerUrl(event.position_id, 'object', SUI_NETWORK)}
             target="_blank"
             rel="noreferrer"
           >
@@ -282,19 +256,6 @@ export function PositionOverview({
           </a>
         </div>
       </div>
-
-      {IS_DEV && (
-        <div tw="mt-6 grid sm:grid-cols-2 gap-3">
-          <Button
-            type="button"
-            tw="py-3 text-sm rounded-md bg-red-500"
-            variant="secondary"
-            onClick={handleExecutePosition}
-          >
-            Execute
-          </Button>
-        </div>
-      )}
     </div>
   );
 }

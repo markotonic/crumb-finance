@@ -46,7 +46,6 @@ export async function fetchPosition(provider: SuiClient, positionId: string) {
   };
 }
 
-// TODO: fetch all pages
 export default function usePosition(positionId: string) {
   const provider = useRpc();
 

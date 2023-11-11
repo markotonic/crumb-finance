@@ -2,9 +2,9 @@ import BN from 'bn.js';
 import { useQuery } from '@tanstack/react-query';
 
 import { QUERY_KEYS } from '@/util/constants';
-import { bnToApproximateDecimal } from '@/util/math';
 import { useCrumb } from '@/context/RpcContext';
 import { useOwnedCoins } from './useOwnedCoins';
+import { bnToApproximateDecimal } from '@crumb-finance/sdk';
 
 export function useWalletBalance(coinType: string) {
   const { data: ownedCoins } = useOwnedCoins();
@@ -18,11 +18,8 @@ export function useWalletBalance(coinType: string) {
       const balanceBn =
         ownedCoins
           ?.filter((c) => c.coinType === coinType)
-          .reduce(
-            // TODO: hardcoded for SUI
-            (acc, cur) => acc.add(new BN(cur.balance)),
-            new BN(0)
-          ) || new BN(0);
+          .reduce((acc, cur) => acc.add(new BN(cur.balance)), new BN(0)) ||
+        new BN(0);
 
       const coinIds =
         ownedCoins

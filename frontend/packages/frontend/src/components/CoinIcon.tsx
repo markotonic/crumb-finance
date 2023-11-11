@@ -8,7 +8,7 @@ const CoinIcon: React.FC<{ coinType: string }> = ({ coinType, ...props }) => {
 
   return (
     <span
-      tw="relative h-9 w-9 rounded-full border border-black bg-white group-hover:bg-cyan-50 transition"
+      tw="block relative h-9 w-9 rounded-full border border-black bg-white group-hover:bg-cyan-50 transition"
       {...props}
     >
       {!!meta?.iconUrl && (

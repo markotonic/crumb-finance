@@ -77,7 +77,7 @@ export type AssetAddEvent = {
 };
 
 export type Asset = {
-  // id: string;
+  id: string;
   name: string;
   // Assume USD has 6 decimals
   price_usd: BN;

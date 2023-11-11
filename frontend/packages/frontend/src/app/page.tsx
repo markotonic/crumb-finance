@@ -1,18 +1,18 @@
 /** @jsxImportSource @emotion/react */
 'use client';
 import 'twin.macro';
+import { useMemo } from 'react';
+import { useQueries } from '@tanstack/react-query';
+import { bnToApproximateDecimal, priceUsdToDecimal } from '@crumb-finance/sdk';
 
 import PositionCreateForm from '@/components/PositionCreateForm';
 import PositionList from '@/components/PositionList';
+import useAssetsList from '@/hooks/useAssetsList';
 import usePositionsList from '@/hooks/usePositionsList';
 import { CDot } from '@/components/Shape';
-import { useQueries } from '@tanstack/react-query';
 import { QUERY_KEYS } from '@/util/constants';
 import { fetchPosition } from '@/hooks/usePosition';
 import { useRpc } from '@/context/RpcContext';
-import { useMemo } from 'react';
-import { bnToApproximateDecimal } from '@/util/math';
-import useAssetsList from '@/hooks/useAssetsList';
 
 function PortfolioValue() {
   const provider = useRpc();
@@ -31,6 +31,15 @@ function PortfolioValue() {
     let totalInvestment = 0;
     let remainingDeposits = 0;
 
+    if (!assets) return { investments: 0, deposits: 0 };
+
+    // wrap again to avoid network call; TODO: could put this in the
+    // useassetslist hook but this is something of a one-off
+    const getAsset = (coinType: string) => {
+      // if this doesn't exist, something is wrong
+      return assets.find(({ coinType: ct }) => ct === coinType)!;
+    };
+
     for (const { data } of positions) {
       if (data) {
         const {
@@ -40,11 +49,23 @@ function PortfolioValue() {
         const investment = position.received;
         const deposit = position.deposit;
 
-        // TODO: hardcoded for SUI
-        totalInvestment += bnToApproximateDecimal(investment, 9);
-        remainingDeposits += bnToApproximateDecimal(deposit, 9);
+        const inputAsset = getAsset(inputTokenType);
+        const outputAsset = getAsset(outputTokenType);
 
-        // TODO: prices...
+        const positionReceivedDecimal = bnToApproximateDecimal(
+          investment,
+          inputAsset.coinMetadata.decimals
+        );
+        const inputTokenPrice = priceUsdToDecimal(inputAsset.asset.price_usd);
+
+        const positionDepositDecimal = bnToApproximateDecimal(
+          deposit,
+          outputAsset.coinMetadata.decimals
+        );
+        const outputTokenPrice = priceUsdToDecimal(outputAsset.asset.price_usd);
+
+        totalInvestment += positionReceivedDecimal * outputTokenPrice;
+        remainingDeposits += positionDepositDecimal * inputTokenPrice;
       }
     }
 
@@ -52,7 +73,7 @@ function PortfolioValue() {
       investments: totalInvestment,
       deposits: remainingDeposits,
     };
-  }, [positions]);
+  }, [assets, positions]);
 
   return (
     <div tw="flex items-center gap-6">
