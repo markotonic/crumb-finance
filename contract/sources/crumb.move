@@ -4,7 +4,7 @@ module crumb::dca {
     use sui::coin::{Self, Coin, CoinMetadata};
     use sui::object::{Self, ID, UID};
     use sui::transfer;
-    use sui::tx_context::{Self, TxContext, sender};
+    use sui::tx_context::{Self, TxContext, sender, epoch_timestamp_ms};
     use std::string::{Self, String};
     use sui::table::{Self, Table};
     use sui::event;
@@ -178,6 +178,7 @@ module crumb::dca {
             coin::from_balance<InputToken>(spent, ctx), 
             tx_context::sender(ctx)
         );
+        position.last_trade_time = epoch_timestamp_ms(ctx) / 1000;
     }
 
     public fun withdraw_funds<InputToken, OutputToken>(

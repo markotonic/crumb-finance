@@ -1,6 +1,7 @@
 [package]
 name = "crumb"
 version = "0.0.1"
+published-at = "0xc288b62049aa30f9588710767e0803a6e030ae5168dce4caf48460754a3299b3"
 
 [dependencies]
 Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/testnet" }
