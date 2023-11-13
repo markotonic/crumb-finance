@@ -1,6 +1,10 @@
 import { SuiClient } from '@mysten/sui.js/client';
 import { getAssets } from './query/asset';
-import { GetPositionsFilter, getPositions } from './query/position';
+import {
+  GetPositionsFilter,
+  fetchPosition,
+  getPositions,
+} from './query/position';
 import { getCoinMetadata } from './query/coin';
 
 export class CrumbClient {
@@ -19,6 +23,10 @@ export class CrumbClient {
 
   async getPositions(filter?: GetPositionsFilter) {
     return await getPositions(this.sui, this.packageId, filter);
+  }
+
+  async getPosition(positionId: string) {
+    return await fetchPosition(this.sui, positionId);
   }
 
   async subscribePositions(_params: { coinTypes?: string[] }) {
@@ -56,5 +64,26 @@ export class CrumbClient {
     }
 
     return oracleCapId;
+  }
+
+  async getAdminCapId(owner: string) {
+    const adminCapQuery = await this.sui.getOwnedObjects({
+      owner,
+      filter: {
+        StructType: `${this.packageId}::dca::Admin`,
+      },
+      options: {
+        showContent: true,
+      },
+    });
+    const adminCapId = adminCapQuery.data.length
+      ? adminCapQuery.data[0].data?.objectId
+      : undefined;
+
+    if (!adminCapId) {
+      throw new Error('Admin cap not found');
+    }
+
+    return adminCapId;
   }
 }

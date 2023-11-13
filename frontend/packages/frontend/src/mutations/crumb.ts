@@ -77,41 +77,6 @@ export function useWithdrawFundsMutation({
   });
 }
 
-export function useUpdatePriceMutation({ onSuccess, onError }: MutationParams) {
-  const { currentAccount } = useWalletKit();
-  const { signAndExecute } = useTransactionExecution();
-  const { data: assets } = useAssetsList();
-  const sui = useRpc();
-  const crumb = useCrumb();
-
-  return useMutation({
-    mutationFn: async () => {
-      if (!currentAccount?.address)
-        throw new Error('You need to connect your wallet!');
-
-      const oracleCapId = await crumb.getOracleCapId(currentAccount.address);
-
-      const asset = assets?.[0];
-      if (!asset) {
-        throw new Error('no assets found');
-      }
-
-      const tx = new TransactionBlock();
-      tx.setGasBudget(GAS_BUDGET);
-      addUpdatePrice(CRUMB_PACKAGE_ID, tx, {
-        oracleCapId,
-        assetId: asset.event.event.asset_id,
-        priceBn: priceUsdDecimalToBn(4.2),
-        assetTokenType: asset.coinType,
-      });
-
-      return signAndExecute({ tx });
-    },
-    onSuccess,
-    onError: onError || defaultOnError,
-  });
-}
-
 export function useExecutePositionMutation({
   onSuccess,
   onError,

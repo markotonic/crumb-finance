@@ -3,3 +3,4 @@ export * from './client';
 export * from './tx';
 export * from './bn';
 export * from './util';
+export * from './math';

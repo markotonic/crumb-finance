@@ -94,8 +94,7 @@ export const decimalToBn = (price: number | string, decimals: number) => {
   return new BN(toDecimalPaddedString(price.toString(), decimals));
 };
 
-// TODO: rename, priceUsdBnToDecimal
-export const priceUsdToDecimal = (price: BN, precision?: number) => {
+export const priceUsdBnToDecimal = (price: BN, precision?: number) => {
   // USDC has 6 decimals
   return bnToApproximateDecimal(price, 6, precision);
 };

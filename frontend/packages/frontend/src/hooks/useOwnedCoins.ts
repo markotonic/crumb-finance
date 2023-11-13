@@ -58,7 +58,7 @@ export function useOwnedCoins({
 
       if (!address) return [];
 
-      const { data } = await provider.getCoins({
+      const { data } = await provider.getAllCoins({
         owner: address,
         cursor,
         limit,

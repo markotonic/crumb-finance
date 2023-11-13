@@ -8,6 +8,8 @@ export const getCoinGeckoPrice = async (_symbol: string) => {
   // it's always lowercase in the response
   const symbol = _symbol.toLowerCase();
 
+  if (symbol === 'usdc') return 1;
+
   const resp = await coingeckoClient.get('simple/price', {
     params: {
       ids: symbol,

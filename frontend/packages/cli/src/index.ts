@@ -5,13 +5,19 @@ import {
   decimalToBn,
   updatePrice as addUpdatePrice,
   executeTrade as addExecuteTrade,
+  addAsset as addAddAsset,
+  addOracleCap as addAddOracleCap,
+  getTradeOutAmount,
+  priceUsdDecimalToBn,
 } from '@crumb-finance/sdk';
 import { getExplorerUrl } from '@crumb-finance/sdk';
 
 import { getClients } from './services/sui';
 import { getCoinGeckoPrice } from './services/prices';
 import { sleep, loadKeystore } from './util';
-import { BN } from 'bn.js';
+import { add, differenceInSeconds } from 'date-fns';
+import { Ed25519Keypair } from '@mysten/sui.js/dist/cjs/keypairs/ed25519';
+import { SuiClient } from '@mysten/sui.js/dist/cjs/client';
 
 const program = new Command('crumb-cli');
 
@@ -26,6 +32,18 @@ declare module 'commander' {
     opts<T>(): CLIOptions & T;
     clients: ReturnType<typeof getClients>;
     keyStore: Awaited<ReturnType<typeof loadKeystore>>;
+    getSignerInfo(): {
+      signer: Ed25519Keypair;
+      signerAddress: string;
+      signAndSendTransactionBlock: (
+        a: Omit<
+          Parameters<SuiClient['signAndExecuteTransactionBlock']>[0],
+          'signer'
+        >
+      ) => Promise<void>;
+      getAdminCapId: () => Promise<string>;
+      getOracleCapId: () => Promise<string>;
+    };
   }
 }
 
@@ -53,36 +71,100 @@ program
     const opts = cmd.opts();
     cmd.clients = getClients(opts.suiNetwork, opts.crumbPackageId);
     cmd.keyStore = await loadKeystore();
+    cmd.getSignerInfo = () => {
+      const { signerAddress } = opts;
+      if (!signerAddress) {
+        throw new Error(
+          'signer address not provided, use --signer-address or set the SIGNER_ADDRESS env var'
+        );
+      }
+      const signer = cmd.keyStore[signerAddress];
+      return {
+        signer,
+        signerAddress,
+        signAndSendTransactionBlock: async (args) => {
+          const res = await cmd.clients.sui.signAndExecuteTransactionBlock({
+            ...args,
+            signer,
+          });
+          const isSuccess = res.digest.length > 0 && !res.errors;
+          const url = getExplorerUrl(res.digest, 'txblock', opts.suiNetwork);
+          if (isSuccess) {
+            console.log('success', url);
+          } else {
+            console.log('error', res.errors, url);
+          }
+        },
+        getAdminCapId: () => cmd.clients.crumb.getAdminCapId(signerAddress),
+        getOracleCapId: () => cmd.clients.crumb.getOracleCapId(signerAddress),
+      };
+    };
   });
 
 program
   .command('get-assets')
   .description('Get list of assets supported by crumb')
-  .argument('[foo]', 'example arg, use <> for required')
-  .action(async (_foo?: string) => {
-    const assets = await program.clients.crumb.getAssets();
-    console.table(assets);
+  .action(async () => console.table(await program.clients.crumb.getAssets()));
+
+program
+  .command('add-asset')
+  .description('Add asset. Caller must have Admin cap.')
+  .requiredOption(
+    '--global-table-id <value>',
+    'Global cap',
+    process.env.CRUMB_GLOBAL_TABLE_ID
+  )
+  .argument('<coinType>', 'coin type')
+  .action(async (coinType: string, cmdOpts: { globalTableId: string }) => {
+    const { getAdminCapId, signAndSendTransactionBlock } =
+      program.getSignerInfo();
+    const adminCapId = await getAdminCapId();
+
+    const metadata = await program.clients.sui.getCoinMetadata({ coinType });
+    if (!metadata || !metadata.id) {
+      throw new Error(`Coin metadata not found for ${coinType}`);
+    }
+
+    const txb = new TransactionBlock();
+    addAddAsset(program.clients.crumb.packageId, txb, {
+      adminCapId,
+      coinType,
+      coinMetaId: metadata.id,
+      globalTableId: cmdOpts.globalTableId,
+    });
+
+    await signAndSendTransactionBlock({ transactionBlock: txb });
+  });
+
+program
+  .command('add-price-oracle')
+  .description('Add price oracle. Caller must have Admin cap.')
+  .argument('<address>', 'address of price oracle')
+  .action(async (address: string) => {
+    const { getAdminCapId, signAndSendTransactionBlock } =
+      program.getSignerInfo();
+    const adminCapId = await getAdminCapId();
+
+    const txb = new TransactionBlock();
+    addAddOracleCap(program.clients.crumb.packageId, txb, {
+      adminCapId,
+      receiverId: address,
+    });
+
+    await signAndSendTransactionBlock({ transactionBlock: txb });
   });
 
 program
   .command('run-price-oracle')
-  .description('Update asset prices in a loop')
+  .description('Update asset prices in a loop. Caller must have Oracle cap.')
   .requiredOption('-i, --interval <value>', 'Interval in seconds', '60')
   .action(async (cmdOpts: { interval: string }) => {
-    const { signerAddress, suiNetwork } = program.opts();
+    const { signAndSendTransactionBlock, getOracleCapId } =
+      program.getSignerInfo();
+    const oracleCapId = await getOracleCapId();
 
     const assets = await program.clients.crumb.getAssets();
     const intervalMs = parseInt(cmdOpts.interval) * 1000;
-
-    if (!signerAddress) {
-      throw new Error(
-        'signer address not provided, use --signer-address or set the SIGNER_ADDRESS env var'
-      );
-    }
-
-    const signer = program.keyStore[signerAddress];
-    const oracleCapId =
-      await program.clients.crumb.getOracleCapId(signerAddress);
 
     while (true) {
       for (const asset of assets) {
@@ -99,19 +181,7 @@ program
           oracleCapId,
           priceBn,
         });
-
-        const res = await program.clients.sui.signAndExecuteTransactionBlock({
-          transactionBlock: txb,
-          signer,
-        });
-
-        const isSuccess = res.digest.length > 0 && !res.errors;
-        const url = getExplorerUrl(res.digest, 'txblock', suiNetwork);
-        if (isSuccess) {
-          console.log('success', url);
-        } else {
-          console.log('error', res.errors, url);
-        }
+        await signAndSendTransactionBlock({ transactionBlock: txb });
       }
 
       console.log('waiting for interval', intervalMs);
@@ -125,24 +195,49 @@ program
   .requiredOption('--interval <value>', 'Interval in seconds', '60')
   .requiredOption('--coin <value>', 'coin ID to trade')
   .action(async (cmdOpts: { interval: string; coin: string }) => {
-    const { signerAddress, suiNetwork } = program.opts();
+    const { signAndSendTransactionBlock, signerAddress } =
+      program.getSignerInfo();
     const intervalMs = parseInt(cmdOpts.interval) * 1000;
 
-    if (!signerAddress) {
-      throw new Error(
-        'signer address not provided, use --signer-address or set the SIGNER_ADDRESS env var'
-      );
-    }
+    const emptyPositionIds = new Set<string>();
+    async function isPositionEligible(positionId: string) {
+      if (emptyPositionIds.has(positionId)) {
+        return false;
+      }
 
-    const signer = program.keyStore[signerAddress];
+      const position = await program.clients.crumb.getPosition(positionId);
+      if (position.position.deposit.isZero()) {
+        emptyPositionIds.add(positionId);
+        return false;
+      }
+
+      const prevTradeTime = position.position.last_trade_time;
+      if (!prevTradeTime) {
+        return true;
+      }
+
+      const secondsSinceLastTrade = differenceInSeconds(
+        prevTradeTime,
+        new Date()
+      );
+      return secondsSinceLastTrade >= position.position.frequency;
+    }
 
     while (true) {
       const assets = await program.clients.crumb.getAssets();
       const positions = await program.clients.crumb.getPositions();
-      // TODO
-      const eligiblePositions: typeof positions = [];
 
-      for (const position of eligiblePositions) {
+      for (const position of positions.filter(
+        (p) => p.outputCoinType === cmdOpts.coin
+      )) {
+        const isEligible = await isPositionEligible(
+          position.event.event.position_id
+        );
+        if (!isEligible) {
+          continue;
+        }
+
+        // example of how to determine trade amounts
         const inputPrice = await getCoinGeckoPrice(
           position.inputCoinMetadata.symbol
         );
@@ -155,13 +250,28 @@ program
         });
         const coinObjectIds = coins.data.map((c) => c.coinObjectId);
 
-        // TODO
-        const tradeAmount = new BN(0);
+        const tradeAmount = getTradeOutAmount(
+          priceUsdDecimalToBn(inputPrice),
+          priceUsdDecimalToBn(outputPrice),
+          position.position.amount_per_trade
+        );
 
-        // TODO
-        // console.log(
-        //   `Updating price for ${asset.coinMetadata.symbol} to ${price}`
-        // );
+        console.log(
+          `Trading ${tradeAmount} ${position.outputCoinType}` +
+            ` for ${position.inputCoinMetadata.symbol} at ${inputPrice}` +
+            ` per ${position.inputCoinMetadata.symbol} and ${outputPrice}` +
+            ` per ${position.outputCoinMetadata.symbol},` +
+            ` positionId: ${position.event.event.position_id}`
+        );
+
+        // annoying. if these are missing, something is wrong
+        const inputAssetId = assets.find(
+          (a) => a.coinType === position.inputCoinType
+        )!.event.event.asset_id;
+        const outputAssetId = assets.find(
+          (a) => a.coinType === position.outputCoinType
+        )!.event.event.asset_id;
+
         const txb = new TransactionBlock();
         addExecuteTrade(program.clients.crumb.packageId, txb, {
           positionId: position.event.event.position_id,
@@ -169,24 +279,12 @@ program
           inputCoinType: position.inputCoinType,
           outputCoinType: position.outputCoinType,
 
-          // TODO
-          inputAssetId: '',
-          outputAssetId: '',
+          inputAssetId,
+          outputAssetId,
           tradeAmount,
         });
 
-        const res = await program.clients.sui.signAndExecuteTransactionBlock({
-          transactionBlock: txb,
-          signer,
-        });
-
-        const isSuccess = res.digest.length > 0 && !res.errors;
-        const url = getExplorerUrl(res.digest, 'txblock', suiNetwork);
-        if (isSuccess) {
-          console.log('success', url);
-        } else {
-          console.log('error', res.errors, url);
-        }
+        await signAndSendTransactionBlock({ transactionBlock: txb });
       }
 
       console.log('waiting for interval', intervalMs);

@@ -3,11 +3,11 @@
 
 import tw, { css, styled } from 'twin.macro';
 import { useEffect, useState } from 'react';
-import { ToastContainer, toast } from 'react-toastify';
+import { ToastContainer } from 'react-toastify';
 import { ConnectButton, useWalletKit } from '@mysten/wallet-kit';
 import 'react-toastify/dist/ReactToastify.css';
 
-import { getExplorerUrl, priceUsdToDecimal } from '@crumb-finance/sdk';
+import { getExplorerUrl, priceUsdBnToDecimal } from '@crumb-finance/sdk';
 
 import GlobalStyles from '@/styles/GlobalStyles';
 import Icon from '@/components/Icon';
@@ -15,8 +15,6 @@ import Providers from './providers';
 import { CDot, CDots } from '@/components/Shape';
 import { SUI_COIN_TYPE, SUI_ICON_URL, SUI_NETWORK } from '@/util/constants';
 import { useRpc } from '@/context/RpcContext';
-import { IS_DEV } from '@/config';
-import { useUpdatePriceMutation } from '@/mutations/crumb';
 import useAssetsList from '@/hooks/useAssetsList';
 import CoinIcon from '@/components/CoinIcon';
 
@@ -50,11 +48,11 @@ const DropdownItem = styled.button<{ variant?: 'primary' | 'warning' }>(
 function CrumbLogo() {
   return (
     <DropdownContainer className="group" tw="w-24 sm:border-r border-black">
-      <DropdownContent tw="right-[-1px] left-0 border-l-0">
+      {/* <DropdownContent tw="right-[-1px] left-0 border-l-0">
         <a href="#" target="_blank" rel="noreferrer">
           <DropdownItem>Github</DropdownItem>
         </a>
-      </DropdownContent>
+      </DropdownContent> */}
       <p tw="font-mono font-bold px-1">
         <Icon.Cookie tw="inline mb-1 mr-1.5 opacity-80" />
         Crumb
@@ -76,7 +74,7 @@ function SuiPriceIndicator() {
 
         <div tw="font-mono font-bold px-1 flex items-center gap-2">
           <CoinIcon tw="h-5 w-5" coinType={SUI_COIN_TYPE} />
-          SUI ${priceUsdToDecimal(sui.asset.price_usd).toFixed(3)}
+          SUI ${priceUsdBnToDecimal(sui.asset.price_usd).toFixed(3)}
         </div>
       </DropdownContainer>
     );
@@ -85,11 +83,6 @@ function SuiPriceIndicator() {
 
 function WalletConnectIndicator() {
   const { currentAccount, disconnect } = useWalletKit();
-  const updatePrice = useUpdatePriceMutation({
-    onSuccess: () => {
-      toast.success('Prices updated');
-    },
-  });
 
   return (
     <DropdownContainer className="group" tw="w-48 sm:border-l border-black">
@@ -99,19 +92,13 @@ function WalletConnectIndicator() {
           href={getExplorerUrl(
             currentAccount?.address || '',
             'address',
-            SUI_NETWORK
+            SUI_NETWORK as never
           )}
           target="_blank"
           rel="noreferrer"
         >
           <DropdownItem>View Account</DropdownItem>
         </a>
-
-        {IS_DEV && (
-          <DropdownItem onClick={() => updatePrice.mutate()}>
-            Dev: Update prices
-          </DropdownItem>
-        )}
 
         <DropdownItem variant="warning" onClick={disconnect}>
           Disconnect
@@ -190,6 +177,7 @@ const RpcStatusIndicator: React.FC = () => {
     function updateAndTimeRpc() {
       const start = Date.now();
       const timeout = new Promise((_, reject) => setTimeout(reject, 10_000));
+      // just any rpc call to check latency
       Promise.race([rpc.getRpcApiVersion(), timeout])
         .then(() => {
           if (status !== 'Operational') {
@@ -324,16 +312,8 @@ export default function RootLayout({
                       {children}
                     </div>
                     <footer tw="flex items-center justify-between py-2 px-4 border-t border-black bg-black/10">
-                      {/* <span tw="font-mono font-bold text-sm">status here</span> */}
                       <RpcStatusIndicator />
                       <div tw="flex items-center gap-3 font-medium">
-                        {/* <span>
-                          <img
-                            tw="inline h-5 mb-0.5"
-                            src="https://assets-global.website-files.com/6425f546844727ce5fb9e5ab/6439ab96e20cad137a4c80d0_TopNavLogo.svg"
-                            alt="Sui Logo"
-                          />
-                        </span> */}
                         <Icon.Github />
                         <Icon.Docs />
                       </div>

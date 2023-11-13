@@ -20,7 +20,7 @@ import { nonEmpty } from '../util';
 export type PositionCreationEventWithDate =
   EventWithDate<PositionCreationEvent>;
 
-type MessyPosition = {
+export type MessyPosition = {
   position: Position;
   event: PositionCreationEventWithDate;
   inputCoinType: string;

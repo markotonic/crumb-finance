@@ -12,7 +12,7 @@ export const QUERY_KEYS = {
   WALLET_BALANCE: 'WALLET_BALANCE',
 } as const;
 
-export const SUI_NETWORK = 'devnet';
+export const SUI_NETWORK = process.env.NEXT_PUBLIC_SUI_NETWORK || 'devnet';
 export const SUI_COIN_TYPE = '0x2::sui::SUI';
 export const SUI_ICON_URL =
   'https://s3.coinmarketcap.com/static-gravity/image/5bd0f43855f6434386c59f2341c5aaf0.png';

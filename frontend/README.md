@@ -3,10 +3,8 @@
 Set these environment variables
 
 ```
-export SUI_NETWORK=devnet
-
-# this will vary
-export CRUMB_PACKAGE_ID=0xd7cc53bdedd5912c321bf0328bd38caf523b0a2016133151a7e5ba40e34ca750
+export SUI_NETWORK=
+export CRUMB_PACKAGE_ID=
 export NEXT_PUBLIC_CRUMB_PACKAGE_ID=$CRUMB_PACKAGE_ID
 ```
 
@@ -38,7 +36,7 @@ export NEXT_PUBLIC_CRUMB_PACKAGE_ID=$CRUMB_PACKAGE_ID
 
 ## Running Oracle
 
-The oracle will load keys from the filesystem keystore at
+The oracle script loads keys from the filesystem keystore at
 `~/.sui/sui_config/sui.keystore`. You can list available signer addresses with
 `sui client addresses`. You must use an address that owns a Crumb Oracle Cap object.
 
@@ -48,4 +46,29 @@ export CRUMB_PACKAGE_ID=<crumb package id here>
 export SIGNER_ID=<signer id here>
 
 yarn cli run-dev run-price-oracle
+```
+
+## Running Keeper/Executor
+
+The keeper script loads keys from the filesystem keystore at
+`~/.sui/sui_config/sui.keystore`. You can list available signer addresses with
+`sui client addresses`.
+
+```
+export SUI_NETWORK=devnet
+export CRUMB_PACKAGE_ID=<crumb package id here>
+export SIGNER_ID=<signer id here>
+
+yarn cli run-dev run-executor
+```
+
+## Adding Asset
+
+```
+export SUI_NETWORK=devnet
+export SIGNER_ID=<signer id here>
+export CRUMB_PACKAGE_ID=<crumb package id here>
+export CRUMB_GLOBAL_TABLE_ID=<global table id here>
+
+yarn cli run-dev run-executor
 ```

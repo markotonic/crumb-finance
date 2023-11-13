@@ -29,7 +29,7 @@ export default function RpcClientProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const rpc = new SuiClient({ url: getFullnodeUrl(SUI_NETWORK) });
+  const rpc = new SuiClient({ url: getFullnodeUrl(SUI_NETWORK as never) });
   const crumb = new CrumbClient(rpc, CRUMB_PACKAGE_ID);
 
   return (

@@ -100,10 +100,8 @@ function formatSchedule(intervalSeconds: number) {
   return `Once every ${days} days`;
 }
 
-function useHackExecute() {}
-
 export function PositionOverview({
-  event: { event, createdAt },
+  event: { event },
 }: {
   event: PositionCreationEventWithDate;
 }) {
@@ -178,7 +176,16 @@ export function PositionOverview({
 
       <div tw="mt-6 grid grid-cols-2 lg:grid-cols-3 gap-3">
         <Stat
-          label="Investment Value"
+          label="Amount Purchased"
+          value={
+            <TokenAmount
+              coinType={outputCoinType}
+              raw={data.position.received}
+            />
+          }
+        />
+        <Stat
+          label="Purchased Value"
           value={
             <TokenValue
               coinType={outputCoinType}
@@ -189,10 +196,7 @@ export function PositionOverview({
         <Stat
           label="Remaining Deposit"
           value={
-            <TokenAmount
-              coinType={outputCoinType}
-              raw={data.position.deposit}
-            />
+            <TokenAmount coinType={inputCoinType} raw={data.position.deposit} />
           }
         />
         <Stat
@@ -212,13 +216,7 @@ export function PositionOverview({
         />
         <Stat
           label="Latest Purchase"
-          value={data.position.last_trade_time?.toLocaleString() || '---'}
-        />
-        <Stat
-          label="Next Purchase"
-          value={
-            data.position.last_trade_time?.toLocaleString() ? 'TODO' : 'Pending'
-          }
+          value={data.position.last_trade_time?.toLocaleString() || 'Pending'}
         />
       </div>
 
@@ -242,7 +240,11 @@ export function PositionOverview({
             Withdraw {outputCoin?.symbol || 'Funds'}
           </Button>
           <a
-            href={getExplorerUrl(event.position_id, 'object', SUI_NETWORK)}
+            href={getExplorerUrl(
+              event.position_id,
+              'object',
+              SUI_NETWORK as never
+            )}
             target="_blank"
             rel="noreferrer"
           >

@@ -480,6 +480,7 @@ __metadata:
     axios: "npm:^1.6.0"
     bn.js: "npm:^5.2.1"
     commander: "npm:^11.1.0"
+    date-fns: "npm:^2.30.0"
     ts-node-dev: "npm:^2.0.0"
   languageName: unknown
   linkType: soft

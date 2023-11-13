@@ -22,6 +22,7 @@
     "@mysten/sui.js": "^0.45.1",
     "axios": "^1.6.0",
     "bn.js": "^5.2.1",
-    "commander": "^11.1.0"
+    "commander": "^11.1.0",
+    "date-fns": "^2.30.0"
   }
 }

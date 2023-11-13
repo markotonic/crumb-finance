@@ -31,7 +31,7 @@ const AssetOption: React.FC<{
 
   return (
     <div
-      tw="flex items-center justify-between gap-6 hover:underline my-3 transition cursor-pointer"
+      tw="flex items-center justify-between gap-12 hover:underline transition cursor-pointer"
       onClick={() => onClick(asset)}
     >
       <div tw="flex items-center gap-2">
@@ -101,19 +101,22 @@ const AssetSelect: React.FC<{
       closeLabel="Close"
     >
       {({ close }) =>
-        !!assets &&
-        assets.map((asset) => {
-          return (
-            <AssetOption
-              key={asset.coinType}
-              asset={asset}
-              onClick={(a) => {
-                onSelect(a);
-                close();
-              }}
-            />
-          );
-        })
+        !!assets && (
+          <div tw="space-y-6 my-3">
+            {assets.map((asset) => {
+              return (
+                <AssetOption
+                  key={asset.coinType}
+                  asset={asset}
+                  onClick={(a) => {
+                    onSelect(a);
+                    close();
+                  }}
+                />
+              );
+            })}
+          </div>
+        )
       }
     </Modal>
   );
@@ -139,7 +142,7 @@ const PositionCreateForm: React.FC = (props) => {
   // used when changing assets
   const resetDepositAmount = () => {
     setValue('depositAmountRaw', '');
-    setValue('depositAmountMax', false);
+    setValue('depositAmountMax', undefined);
   };
 
   // NOTE: didn't bother to rename the type in the tx params. We convert
@@ -151,14 +154,21 @@ const PositionCreateForm: React.FC = (props) => {
   // set default input/output on form load
   useEffect(() => {
     if (ownedCoins?.length && !inputCoinType && !outputCoinType) {
-      setValue('inputCoinType', ownedCoins[0].coinType);
-      setValue('outputCoinType', ownedCoins[0].coinType);
+      // find first non-sui input coin or leave it
+      const firstNonSui = ownedCoins.find((c) => c.coinType !== SUI_COIN_TYPE)
+        ?.coinType;
+      if (firstNonSui?.length) {
+        setValue('inputCoinType', firstNonSui);
+      }
+
+      // set output to sui
+      setValue('outputCoinType', SUI_COIN_TYPE);
     }
   }, [ownedCoins, setValue, inputCoinType, outputCoinType]);
 
   // unset max if the user manually types in the deposit amount
   useEffect(() => {
-    setValue('depositAmountMax', false, { shouldValidate: false });
+    setValue('depositAmountMax', undefined, { shouldValidate: false });
   }, [depositAmountDecimal]);
 
   const { data: walletBalance } = useWalletBalance(inputCoinType);
@@ -174,7 +184,7 @@ const PositionCreateForm: React.FC = (props) => {
         (walletBalance.balanceDecimal - 1).toString()
       );
       // notice we don't actually use max in this case
-      setValue('depositAmountMax', false);
+      setValue('depositAmountMax', undefined);
     } else {
       setValue('depositAmountRaw', walletBalance.balanceDecimal.toString());
       setValue('depositAmountMax', true);
@@ -190,6 +200,10 @@ const PositionCreateForm: React.FC = (props) => {
   });
 
   const submit = handleSubmit((data) => {
+    if (inputCoinType === outputCoinType) {
+      toast.error('Input and output coins must be different.');
+      return;
+    }
     if (inputCoinMeta) {
       return createPosition.mutate({
         ...data,
@@ -238,7 +252,7 @@ const PositionCreateForm: React.FC = (props) => {
           <Label>Deposit amount</Label>
           <span tw="text-sm font-medium tabular-nums">
             Wallet: {walletBalance?.balanceDecimal?.toFixed(2) || '---'}{' '}
-            {outputCoinMeta?.symbol || '---'}
+            {inputCoinMeta?.symbol || '---'}
           </span>
         </div>
         <div tw="relative">
@@ -257,6 +271,7 @@ const PositionCreateForm: React.FC = (props) => {
           <Input
             {...register('depositAmountRaw')}
             placeholder="Deposit amount"
+            inputMode="numeric"
             type="number"
             max={walletBalance?.balanceDecimal}
             step="1e-16"
@@ -271,6 +286,7 @@ const PositionCreateForm: React.FC = (props) => {
           {...register('amountPerTrade')}
           placeholder="Amount per trade"
           type="number"
+          inputMode="numeric"
           max={depositAmountDecimal as string}
           step="1e-16"
           required
@@ -283,6 +299,8 @@ const PositionCreateForm: React.FC = (props) => {
           {...register('frequency')}
           step={1}
           min={1}
+          type="number"
+          inputMode="numeric"
           placeholder="Days"
           required
         />

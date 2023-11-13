@@ -52,8 +52,10 @@ export async function getAssets(
         });
 
         const rawCoinTypeName = event.event.coin_type_name;
-        // replace leading 0s with 0x
-        event.event.coin_type_name = rawCoinTypeName.replace(/^0+/, '0x');
+        // delete leading 0s and add 0x
+        event.event.coin_type_name = rawCoinTypeName
+          .replace(/^0+/, '')
+          .replace(/^/, '0x');
 
         if (!obj.data?.content || obj.data.content.dataType !== 'moveObject') {
           throw new Error('No content');

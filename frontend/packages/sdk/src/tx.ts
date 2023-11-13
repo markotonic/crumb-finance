@@ -8,11 +8,13 @@ import { objArg } from './util';
 import { SUI_COIN_TYPE } from './constants';
 
 export type CrumbMethodName =
+  | 'add_asset'
   | 'create_position'
   | 'execute_trade'
   | 'close_position'
   | 'withdraw_funds'
-  | 'update_price';
+  | 'update_price'
+  | 'add_oracle';
 
 type EnforceProperties<T, K extends keyof T> = Omit<T, K> & {
   [P in K]-?: Exclude<T[P], undefined>;
@@ -104,7 +106,7 @@ export type CreatePositionParams = {
    * Whether to deposit the maximum amount of the coin. If provided, skips
    * splitting the coin.
    */
-  depositAmountMax: boolean;
+  depositAmountMax?: true;
 
   /**
    * Amount of deposit to spend per trade
@@ -159,7 +161,7 @@ export function createPosition(
     tx,
     depositCoinIds,
     params.depositAmountRaw.toString(),
-    params.depositAmountMax || undefined
+    params.depositAmountMax
   );
 
   const [positionId] = tx.moveCall({
@@ -234,17 +236,23 @@ export function executeTrade(
   tx: TransactionBlock,
   params: ExecuteTradeParams
 ) {
+  // note we use the output coin, since that's what the executor is selling
+  const hackNeedsGasSplit = params.outputCoinType === SUI_COIN_TYPE;
+  const coinIds = hackNeedsGasSplit
+    ? [tx.gas, ...params.tradeOutCoinIds.slice(1)]
+    : params.tradeOutCoinIds;
+
   const coin = mergeCoinsAndSplit(
     tx,
-    params.tradeOutCoinIds,
+    coinIds,
     params.tradeAmount,
-    params.tradeAmountMax || undefined
+    params.tradeAmountMax
   );
 
   const [res] = tx.moveCall({
     target: crumbMethod(packageId, 'execute_trade'),
     arguments: [
-      objArg(tx, params.positionId),
+      tx.object(params.positionId),
       typeof coin === 'string' ? tx.object(coin) : coin,
       tx.object(params.inputAssetId),
       tx.object(params.outputAssetId),
@@ -324,5 +332,44 @@ export function updatePrice(
       tx.pure(params.priceBn.toString(), 'u64'),
     ],
     typeArguments: [params.assetTokenType],
+  });
+}
+
+export type AddAssetParams = {
+  adminCapId: string;
+  coinMetaId: string;
+  coinType: string;
+  globalTableId: string;
+};
+
+export function addAsset(
+  packageId: string,
+  tx: TransactionBlock,
+  params: AddAssetParams
+) {
+  tx.moveCall({
+    target: crumbMethod(packageId, 'add_asset'),
+    arguments: [
+      tx.object(params.adminCapId),
+      tx.object(params.coinMetaId),
+      tx.object(params.globalTableId),
+    ],
+    typeArguments: [params.coinType],
+  });
+}
+
+export type AddOracleCapParams = {
+  adminCapId: string;
+  receiverId: string;
+};
+
+export function addOracleCap(
+  packageId: string,
+  tx: TransactionBlock,
+  params: AddOracleCapParams
+) {
+  tx.moveCall({
+    target: crumbMethod(packageId, 'add_oracle'),
+    arguments: [tx.object(params.adminCapId), tx.object(params.receiverId)],
   });
 }
